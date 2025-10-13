@@ -4,6 +4,7 @@ const { ThemNV, EditNV, GetNV, DeleteNV } = require('../controllers/NhanVienCont
 const { ThemDocGia, EditDocGia, GetDocGia, DeleteDocGia } = require('../controllers/DocGiaController');
 const { ThemNHAXUATBAN, EditNHAXUATBAN, GetNHAXUATBAN, DeleteNHAXUATBAN } = require('../controllers/NhaXuatBanController');
 const { ThemSACH, EditSACH, GetSACH, DeleteSACH } = require('../controllers/SachController');
+const { ThemTHEODOIMUONSACH, EditTHEODOIMUONSACH, GetTHEODOIMUONSACH, DeleteTHEODOIMUONSACH } = require('../controllers/TheoDoiMuonSachController');
 router.get('/', (req, res) => {
     return res.send('hello')
 })
@@ -34,4 +35,10 @@ router.post('/api/add-sach', ThemSACH)
 router.patch('/api/edit-sach', EditSACH)
 router.get('/api/get-all-sach', GetSACH)
 router.delete('/api/delete-sach', DeleteSACH)
+
+// CRUD THEODOIMUONSACH
+router.post('/api/add-theodoi', ThemTHEODOIMUONSACH)
+router.patch('/api/edit-theodoi', EditTHEODOIMUONSACH)
+router.get('/api/get-all-theodoi', GetTHEODOIMUONSACH)
+router.delete('/api/delete-theodoi', DeleteTHEODOIMUONSACH)
 module.exports = router

@@ -19,6 +19,7 @@
     "homepage": "https://github.com/hoanle123564/quan_ly_thu_vien#readme",
     "dependencies": {
         "body-parser": "^2.2.0",
+        "cors": "^2.8.5",
         "ejs": "^3.1.10",
         "express": "^5.1.0",
         "mongodb": "^6.20.0",
