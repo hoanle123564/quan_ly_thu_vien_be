@@ -3,6 +3,14 @@ const NhanVien = require('../models/NhanVien');
 const ThemNV = async (req, res) => {
     try {
         const newNV = new NhanVien(req.body);
+        //         {
+        //   MSNV: "1",
+        //   HoTenNV: "Le Ngoc Hoan",
+        //   Password: "123456",
+        //   ChucVu: "NhanVien",
+        //   DiaChi: "CanTho City",
+        //   SoDienThoai: "0868487499"
+        // }
         const result = await newNV.save(); // Mongoose tự validate ở đây
         res.status(201).json({ message: 'Nhân viên thêm thành công', data: result });
     } catch (err) {
@@ -11,11 +19,28 @@ const ThemNV = async (req, res) => {
 };
 const EditNV = async (req, res) => {
     try {
-        const db = await connection();
-        const result = await db.collection('NhanVien').updateOne({ id: req.params.id }, { $set: req.body });
+        await NhanVien.updateOne({ MSNV: 1 }, req.body);
+        const result = await NhanVien.findOne({ MSNV: 1 });
         return res.status(200).json({ message: 'NhanVien updated!', data: result });
     } catch (err) {
         return res.status(500).json({ message: err.message });
     }
 }
-module.exports = { ThemNV, EditNV };
+const GetNV = async (req, res) => {
+    try {
+        const list = await NhanVien.find();
+        return res.status(200).json({ message: 'list NhanVien!', data: list });
+    } catch (error) {
+        return res.status(500).json({ message: "Can't get list NhanVien", error: err.message });
+
+    }
+}
+const DeleteNV = async (req, rs) => {
+    try {
+        await NhanVien.deleteOne({ MSNV: 1 });
+        const result = await NhanVien.findOne({ MSNV: 1 });
+    } catch (error) {
+        return res.status(500).json({ message: "Can't delete", error: err.message });
+    }
+}
+module.exports = { ThemNV, EditNV, GetNV, DeleteNV };

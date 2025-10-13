@@ -2,11 +2,6 @@ const mongoose = require('mongoose');
 const AutoIncrement = require('mongoose-sequence')(mongoose);
 
 const nhanVienSchema = new mongoose.Schema({
-    // MSNV: {
-    //     type: Number,
-    //     required: true,
-    //     unique: true
-    // },
     HoTenNV: {
         type: String,
         required: true
