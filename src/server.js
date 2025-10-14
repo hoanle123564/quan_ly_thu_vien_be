@@ -1,16 +1,20 @@
 const express = require('express')
-const app = express()
 const ViewEngine = require('./config/viewEngine')
 const WebRoute = require('./routes/web')
 const bodyParser = require('body-parser')
 const connectDB = require('./config/connectdb1');
+const cors = require('cors');
 const port = 3000
 
-connectDB();
+let app = express()
+
+app.use(cors({ origin: 'http://localhost:8080', credentials: true }));
+// app.use(express.json)
 
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
+connectDB();
 
 ViewEngine(app)
 app.use('/', WebRoute)
