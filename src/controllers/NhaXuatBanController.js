@@ -1,4 +1,5 @@
 const NHAXUATBAN = require("../models/NhaXuatBan");
+const SACH = require("../models/Sach");
 
 const ThemNHAXUATBAN = async (req, res) => {
   try {
@@ -38,15 +39,36 @@ const GetNHAXUATBAN = async (req, res) => {
       .json({ message: "Can't get list NHAXUATBAN", error: err.message });
   }
 };
-const DeleteNHAXUATBAN = async (req, rs) => {
+const DeleteNHAXUATBAN = async (req, res) => {
   try {
-    await NHAXUATBAN.deleteOne({ MANXB: 1 });
-    const result = await NHAXUATBAN.findOne({ MANXB: 1 });
-    return res.status(200).json({ message: "Delete complete !" });
+    const { MANXB } = req.body;
+
+    if (!MANXB)
+      return res.status(400).json({ message: "Thiếu mã nhà xuất bản" });
+
+    // Kiểm tra xem nhà xuất bản có tồn tại không
+    const nxb = await NHAXUATBAN.findOne({ MANXB });
+    if (!nxb)
+      return res.status(404).json({ message: "Nhà xuất bản không tồn tại" });
+
+    // Kiểm tra xem nhà xuất bản có được sử dụng trong sách nào không
+    const sachSuDung = await SACH.findOne({ MANXB });
+    if (sachSuDung) {
+      return res.status(400).json({
+        message: `Không thể xóa! Nhà xuất bản đang được sử dụng trong sách "${sachSuDung.TENSACH}"`,
+        sach: sachSuDung,
+      });
+    }
+
+    // Nếu không có sách nào sử dụng, cho phép xóa
+    await NHAXUATBAN.deleteOne({ MANXB });
+    return res
+      .status(200)
+      .json({ message: "Xóa nhà xuất bản thành công!", data: nxb });
   } catch (error) {
     return res
       .status(500)
-      .json({ message: "Can't delete", error: err.message });
+      .json({ message: "Không thể xóa", error: error.message });
   }
 };
 module.exports = {
