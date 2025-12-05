@@ -2,9 +2,11 @@ const mongoose = require("mongoose");
 
 const theoDoiMuonSchema = new mongoose.Schema(
   {
-    MADOCGIA: { type: Number, required: true, ref: "DOCGIA" },
+    MADOCGIA: { type: String, required: true, ref: "DOCGIA" },
     MASACH: { type: Number, required: true, ref: "SACH" },
+    SOLUONG: { type: Number, required: true },
     NGAYMUON: { type: Date, required: true },
+    DATRASACH: { type: Boolean, default: false },
     NGAYTRA: { type: Date },
     PHAT: { type: Number, default: 0 },
   },
@@ -34,4 +36,20 @@ theoDoiMuonSchema.pre("save", async function (next) {
     next(err); // Báo lỗi ra controller
   }
 });
+theoDoiMuonSchema.virtual("docgia", {
+  ref: "DOCGIA",
+  localField: "MADOCGIA",
+  foreignField: "MADOCGIA",
+  justOne: true,
+});
+
+theoDoiMuonSchema.virtual("sach", {
+  ref: "SACH",
+  localField: "MASACH",
+  foreignField: "MASACH",
+  justOne: true,
+});
+theoDoiMuonSchema.set("toObject", { virtuals: true });
+theoDoiMuonSchema.set("toJSON", { virtuals: true });
+
 module.exports = mongoose.model("THEODOIMUONSACH", theoDoiMuonSchema);

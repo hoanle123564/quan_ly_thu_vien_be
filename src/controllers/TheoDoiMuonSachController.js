@@ -1,17 +1,12 @@
 const THEODOIMUONSACH = require("../models/TheoDoiMuonSach");
-
+const SACH = require("../models/Sach");
 const ThemTHEODOIMUONSACH = async (req, res) => {
   try {
     const nowVN = new Date();
     const next7days = new Date(nowVN);
     next7days.setDate(nowVN.getDate() + 7);
-    // const newSACH = new THEODOIMUONSACH(req.body);
-    const newTheoDoi = new THEODOIMUONSACH({
-      MADOCGIA: 1,
-      MASACH: 2,
-      NGAYMUON: nowVN,
-      NGAYTRA: next7days,
-    });
+    const newSACH = new THEODOIMUONSACH(req.body);
+
     const result = await newTheoDoi.save(); // Mongoose tự validate ở đây
     res.status(201).json({ message: "Thêm theo dõi thành công", data: result });
   } catch (err) {
@@ -31,7 +26,15 @@ const EditTHEODOIMUONSACH = async (req, res) => {
 };
 const GetTHEODOIMUONSACH = async (req, res) => {
   try {
-    const list = await THEODOIMUONSACH.find();
+    const list = await THEODOIMUONSACH.find()
+      .populate({
+        path: "docgia",
+        select: "MADOCGIA HOLOT TEN DIACHI DIENTHOAI PHAI NGAYSINH",
+      })
+      .populate({
+        path: "sach",
+        select: "MASACH TENSACH TACGIA DONGIA SOQUYEN NAMXUATBAN MANXB ANH",
+      });
     return res
       .status(200)
       .json({ message: "list THEODOIMUONSACH!", data: list });
@@ -41,6 +44,7 @@ const GetTHEODOIMUONSACH = async (req, res) => {
       .json({ message: "Can't get list THEODOIMUONSACH", error: err.message });
   }
 };
+
 const DeleteTHEODOIMUONSACH = async (req, rs) => {
   try {
     await THEODOIMUONSACH.deleteOne({ MASACH: 1 });
@@ -55,39 +59,47 @@ const DeleteTHEODOIMUONSACH = async (req, rs) => {
 
 const MuonSach = async (req, res) => {
   try {
-    const { MADOCGIA, MASACH } = req.body;
+    const { MADOCGIA, MASACH, SOLUONG } = req.body;
+
+    if (!MADOCGIA || !MASACH || !SOLUONG)
+      return res.status(400).json({ message: "Thiếu thông tin mượn sách!" });
 
     const sach = await SACH.findOne({ MASACH });
-    if (!sach) return res.status(404).json({ message: "Sách không tồn tại" });
+    if (!sach) return res.status(404).json({ message: "Sách không tồn tại!" });
 
-    if (sach.SOQUYEN == 0)
-      return res.status(400).json({ message: "Sách đã hết số lượng!" });
+    if (sach.SOQUYEN < SOLUONG)
+      return res.status(400).json({
+        message: `Chỉ còn ${sach.SOQUYEN} quyển, không đủ ${SOLUONG} quyển để mượn!`,
+      });
 
-    // Giảm số lượng sách
-    await SACH.updateOne({ MASACH }, { $inc: { SOQUYEN: -1 } });
+    // Cập nhật kho
+    await SACH.updateOne({ MASACH }, { $inc: { SOQUYEN: -SOLUONG } });
 
     const today = new Date();
-    const dueDate = new Date(today);
-    dueDate.setDate(dueDate.getDate() + 14); // hạn trả 14 ngày
 
+    // KHÔNG lưu ngày trả dự kiến - để NULL
     const newBorrow = new THEODOIMUONSACH({
       MADOCGIA,
       MASACH,
+      SOLUONG,
       NGAYMUON: today,
-      NGAYTRA: dueDate,
+      NGAYTRA: null,
       PHAT: 0,
+      DATRASACH: false,
     });
 
     const result = await newBorrow.save();
 
     return res.status(201).json({
-      message: "Mượn sách thành công",
+      message: "Mượn sách thành công!",
       data: result,
     });
   } catch (err) {
-    return res
-      .status(500)
-      .json({ message: "Lỗi mượn sách", error: err.message });
+    console.log(err);
+    return res.status(500).json({
+      message: "Lỗi mượn sách!",
+      error: err.message,
+    });
   }
 };
 
@@ -98,7 +110,7 @@ const TraSach = async (req, res) => {
     let record = await THEODOIMUONSACH.findOne({
       MADOCGIA,
       MASACH,
-      PHAT: 0, // chưa trả
+      DATRASACH: false, // chỉ lấy phiếu đang mượn
     });
 
     if (!record)
@@ -109,29 +121,90 @@ const TraSach = async (req, res) => {
     const today = new Date();
     let fine = 0;
 
-    if (today > record.NGAYTRA) {
-      const lateDays = Math.ceil(
-        (today - new Date(record.NGAYTRA)) / (1000 * 60 * 60 * 24)
-      );
-      fine = lateDays * 5000; // 5000đ/ngày
+    // ngày dự kiến = NGAYMUON + 7 ngày
+    const dueDate = new Date(record.NGAYMUON);
+    dueDate.setDate(dueDate.getDate() + 7);
+
+    if (today > dueDate) {
+      const lateDays = Math.ceil((today - dueDate) / 86400000);
+      fine = lateDays * 5000;
     }
 
+    // cập nhật vào DB
     record.PHAT = fine;
-    record.NGAYTRA = today;
+    record.NGAYTRA = today; // <<<<<< cập nhật ngày trả thực tế
+    record.DATRASACH = true;
+
     await record.save();
 
-    // trả lại 1 quyển sách
-    await SACH.updateOne({ MASACH }, { $inc: { SOQUYEN: 1 } });
+    // trả lại sách vào kho
+    await SACH.updateOne({ MASACH }, { $inc: { SOQUYEN: record.SOLUONG } });
 
     return res.status(200).json({
-      message: "Trả sách thành công",
+      message: "Trả sách thành công!",
       fine,
       data: record,
     });
   } catch (err) {
-    return res
-      .status(500)
-      .json({ message: "Lỗi trả sách", error: err.message });
+    return res.status(500).json({
+      message: "Lỗi trả sách",
+      error: err.message,
+    });
+  }
+};
+
+const GetTHEODOIprivate = async (req, res) => {
+  try {
+    const { MADOCGIA } = req.query;
+
+    const list = await THEODOIMUONSACH.find({ MADOCGIA, DATRASACH: false })
+      .populate({
+        path: "docgia",
+        select: "MADOCGIA HOLOT TEN DIACHI DIENTHOAI PHAI NGAYSINH",
+      })
+      .populate({
+        path: "sach",
+        select: "MASACH TENSACH TACGIA DONGIA SOQUYEN NAMXUATBAN MANXB ANH",
+      });
+
+    return res.status(200).json({
+      message: "Danh sách mượn sách (kèm đầy đủ thông tin)",
+      data: list,
+    });
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      message: "Không thể lấy dữ liệu",
+      error: err.message,
+    });
+  }
+};
+
+const GetLichSuMuonPrivate = async (req, res) => {
+  try {
+    const { MADOCGIA } = req.query;
+
+    const list = await THEODOIMUONSACH.find({ MADOCGIA })
+      .populate({
+        path: "docgia",
+        select: "MADOCGIA HOLOT TEN DIACHI DIENTHOAI PHAI NGAYSINH",
+      })
+      .populate({
+        path: "sach",
+        select: "MASACH TENSACH TACGIA DONGIA SOQUYEN NAMXUATBAN MANXB ANH",
+      });
+
+    return res.status(200).json({
+      message: "Lịch sử mượn sách (kèm đầy đủ thông tin)",
+      data: list,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      message: "Không thể lấy dữ liệu",
+      error: err.message,
+    });
   }
 };
 
@@ -142,4 +215,6 @@ module.exports = {
   DeleteTHEODOIMUONSACH,
   MuonSach,
   TraSach,
+  GetTHEODOIprivate,
+  GetLichSuMuonPrivate,
 };
