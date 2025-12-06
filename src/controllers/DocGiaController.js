@@ -129,7 +129,7 @@ const DeleteDocGia = async (req, res) => {
       return res.status(404).json({ message: "Độc giả không tồn tại!" });
     }
 
-    // 2. Kiểm tra độc giả có đang mượn sách không
+    // 2. Kiểm tra độc giả có đang mượn sách (chưa trả)
     const dangMuon = await THEODOIMUONSACH.findOne({
       MADOCGIA: docgia.MADOCGIA,
       DATRASACH: false,
@@ -141,11 +141,14 @@ const DeleteDocGia = async (req, res) => {
       });
     }
 
-    // 3. Nếu không có sách đang mượn k cho xóa
+    // 3. XÓA toàn bộ lịch sử mượn trả của độc giả
+    await THEODOIMUONSACH.deleteMany({ MADOCGIA: docgia.MADOCGIA });
+
+    // 4. Xóa độc giả chính
     await DOCGIA.findByIdAndDelete(id);
 
     return res.status(200).json({
-      message: "Xóa độc giả thành công!",
+      message: "Xóa độc giả và toàn bộ lịch sử mượn trả thành công!",
     });
   } catch (error) {
     return res.status(500).json({

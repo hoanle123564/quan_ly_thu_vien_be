@@ -52,6 +52,7 @@ const GetDetailNV = async (req, res) => {
       .json({ message: "Can't get detail NhanVien", error: err.message });
   }
 };
+
 const DeleteNV = async (req, rs) => {
   try {
     await NhanVien.deleteOne({ MSNV: 1 });
